@@ -1,0 +1,10 @@
+#vars_linux2.yml
+mysql_packages:
+  - mysql57-server
+  - mysql57
+  - MySQL-python
+  - mysql57-devel
+mysql_service: mysqld
+db_user: wp
+db_pass: Wp@1234
+db_name: wordpress

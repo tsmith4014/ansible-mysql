@@ -1,0 +1,118 @@
+#pbsql.yml
+- name: setup Mysql with db and remote login
+  become: yes
+  hosts: all
+  tasks:
+    - name: Include environment-specific variables
+      include_vars: "vars_{{ env }}.yml"
+    - name: Installing Mysql and dependencies
+      package:
+        name: "{{ item }}"
+        state: present
+        update_cache: yes
+      loop: "{{ mysql_packages }}"
+      become: yes
+    - name: start and enable mysql service
+      service:
+        name: "{{ mysql_service }}"
+        state: started
+        enabled: yes
+    - name: creating mysql user
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: '*.*:ALL'
+        host: '%'
+        state: present
+    - name: Grant all privileges to mysql user
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_pass }}"
+        priv: '*.*:ALL,GRANT'
+        host: 'localhost'
+        state: present
+    - name: creating db
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+    - name: Enable remote login to mysql
+      lineinfile:
+         path: /etc/mysql/mysql.conf.d/mysqld.cnf
+         regexp: '^bind-address'
+         line: 'bind-address = 0.0.0.0'
+         backup: yes
+      notify:
+         - Restart mysql
+    - name: Download WordPress
+      get_url:
+        url: https://wordpress.org/latest.tar.gz
+        dest: /tmp/wordpress.tar.gz
+    - name: Extract WordPress
+      unarchive:
+        src: /tmp/wordpress.tar.gz
+        dest: /var/www/html/
+        remote_src: yes
+    - name: Copy WordPress config file
+      copy:
+        src: /var/www/html/wordpress/wp-config-sample.php
+        dest: /var/www/html/wordpress/wp-config.php
+    - name: Update WordPress config file
+      lineinfile:
+        path: /var/www/html/wordpress/wp-config.php
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: "'DB_NAME', 'database_name_here'", line: "'DB_NAME', '{{ db_name }}'" }
+        - { regexp: "'DB_USER', 'username_here'", line: "'DB_USER', '{{ db_user }}'" }
+        - { regexp: "'DB_PASSWORD', 'password_here'", line: "'DB_PASSWORD', '{{ db_pass }}'" }
+  handlers:
+    - name: Restart mysql
+      service:
+        name: mysql
+        state: restarted
+
+
+
+# #pbsql.yml my version prior to trying to add wordpress
+# - name: setup Mysql with db and remote login
+#   become: yes
+#   hosts: all
+#   tasks:
+#     - name: Include environment-specific variables
+#       include_vars: "vars_{{ env }}.yml"
+#     - name: Installing Mysql and dependencies
+#       package:
+#         name: "{{ item }}"
+#         state: present
+#         update_cache: yes
+#       loop: "{{ mysql_packages }}"
+#       become: yes
+#     - name: start and enable mysql service
+#       service:
+#         name: "{{ mysql_service }}"
+#         state: started
+#         enabled: yes
+#     - name: creating mysql user
+#       mysql_user:
+#         name: "{{ db_user }}"
+#         password: "{{ db_pass }}"
+#         priv: '*.*:ALL'
+#         host: '%'
+#         state: present
+#     - name: creating db
+#       mysql_db:
+#         name: "{{ db_name }}"
+#         state: present
+#     - name: Enable remote login to mysql
+#       lineinfile:
+#          path: /etc/mysql/mysql.conf.d/mysqld.cnf
+#          regexp: '^bind-address'
+#          line: 'bind-address = 0.0.0.0'
+#          backup: yes
+#       notify:
+#          - Restart mysql
+#   handlers:
+#     - name: Restart mysql
+#       service:
+#         name: mysql
+#         state: restarted

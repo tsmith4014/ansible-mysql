@@ -1,0 +1,10 @@
+#vars_ubuntu.yml
+mysql_packages:
+  - mysql-server
+  - mysql-client
+  - python3-mysqldb
+  - libmysqlclient-dev
+mysql_service: mysql
+db_user: wp
+db_pass: Wp@1234wp
+db_name: wordpress
